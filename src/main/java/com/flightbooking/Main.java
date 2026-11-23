@@ -1,3 +1,4 @@
+
 package com.flightbooking;
 
 public class Main {
@@ -6,38 +7,43 @@ public class Main {
 
         BookingSystem system = new BookingSystem();
 
-        Flight flight1 = new Flight(
-                "BJ101", "Nice", "Tunis", 120.0, 180
-        );
+        // Créer un vol avec 2 places
+        Flight flight = new Flight(
+                "BJ101", "Nice", "Tunis", 120.0, 2);
 
-        Flight flight2 = new Flight(
-                "AF202", "Paris", "Nice", 90.0, 150
-        );
+        // Créer deux passagers
+        Passenger p1 = new Passenger(
+                "P001", "Sarah", "Martin", "sarah@example.com");
 
-        Flight flight3 = new Flight(
-                "BJ303", "Nice", "Tunis", 150.0, 100
-        );
+        Passenger p2 = new Passenger(
+                "P002", "Adam", "Ali", "adam@example.com");
 
-        // Ajouter les vols
-        system.addFlight(flight1);
-        system.addFlight(flight2);
-        system.addFlight(flight3);
+        // Ajouter le vol
+        system.addFlight(flight);
 
-        // Afficher tous les vols
-        System.out.println("All flights:");
-        for (Flight flight : system.getFlights()) {
-            System.out.println(flight);
+        // Réserver deux places
+        Booking b1 = system.bookFlight("B001", p1, "BJ101");
+        Booking b2 = system.bookFlight("B002", p2, "BJ101");
+
+        System.out.println("Booking 1: " + b1.getStatus());
+        System.out.println("Booking 2: " + b2.getStatus());
+
+        System.out.println("Available seats: "
+                + flight.getAvailableSeats());
+
+        // Tester une réservation lorsque le vol est complet
+        try {
+            system.bookFlight("B003", p1, "BJ101");
+        } catch (IllegalStateException e) {
+            System.out.println("Booking failed: " + e.getMessage());
         }
 
-        // Rechercher Nice → Tunis
-        System.out.println("\nFlights from Nice to Tunis:");
+        // Annuler la première réservation
+        System.out.println("Cancellation: " + system.cancelBooking("B001"));
 
-        for (Flight flight : system.searchFlights("Nice", "Tunis")) {
-            System.out.println(flight);
-        }
+        System.out.println("Available seats after cancellation: " + flight.getAvailableSeats());
 
-        // Rechercher un vol par numéro
-        System.out.println("\nSearch flight BJ101:");
-        System.out.println(system.findFlightByNumber("BJ101"));
+        // Tester une deuxième annulation
+        System.out.println("Second cancellation: " + system.cancelBooking("B001"));
     }
 }
