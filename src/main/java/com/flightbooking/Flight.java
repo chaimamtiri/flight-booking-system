@@ -8,6 +8,9 @@ public class Flight {
     private int availableSeats;
 
     public Flight (String flightNumber, String origin, String destination, double price, int availableSeats) {
+        if (availableSeats < 0) {
+            throw new IllegalArgumentException("Available seats cannot be negative");
+        }
         this.flightNumber = flightNumber;
         this.origin = origin;
         this.destination = destination;
@@ -40,9 +43,13 @@ public class Flight {
      }
 
     // reserver une place
-     void reserveSeat() {
-        if (hasAvailableSeats()) availableSeats--;
-     }
+    public boolean reserveSeat() {
+        if (hasAvailableSeats()) {
+            availableSeats--;
+            return true;
+        }
+        return false;
+    }
 
      // affichage
     @Override
