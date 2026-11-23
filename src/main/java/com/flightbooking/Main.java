@@ -1,29 +1,31 @@
 package com.flightbooking;
 
 public class Main {
-
     public static void main(String[] args) {
 
         Flight flight = new Flight(
                 "BJ101", "Nice", "Tunis", 120.0, 2
         );
 
-        System.out.println(flight);
+        Passenger passenger = new Passenger(
+                "P001", "Sarah", "Martin", "sarah@example.com"
+        );
 
-        // Réserver 3 fois
-        System.out.println(flight.reserveSeat());
-        System.out.println(flight.reserveSeat());
-        System.out.println(flight.reserveSeat());
+        // Réserver une place avant de créer Booking
+        flight.reserveSeat();
 
-        System.out.println("Available seats: "
+        Booking booking = new Booking("B001", passenger, flight);
+
+        System.out.println("Before cancellation: "
                 + flight.getAvailableSeats());
 
-        // Libérer 3 fois
-        System.out.println(flight.releaseSeat());
-        System.out.println(flight.releaseSeat());
-        System.out.println(flight.releaseSeat());
+        System.out.println("First cancellation: "
+                + booking.cancel());
 
-        System.out.println("Available seats: "
+        System.out.println("After cancellation: "
                 + flight.getAvailableSeats());
+
+        System.out.println("Second cancellation: "
+                + booking.cancel());
     }
 }
