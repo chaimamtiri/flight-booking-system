@@ -1,48 +1,62 @@
 package com.flightbooking;
 
 public class Flight {
+
+    // Attributs
     private String flightNumber;
     private String origin;
     private String destination;
     private double price;
+    private int totalSeats;
     private int availableSeats;
 
-    public Flight (String flightNumber, String origin, String destination, double price, int availableSeats) {
-        if (availableSeats < 0) {
-            throw new IllegalArgumentException("Available seats cannot be negative");
+    // Constructeur
+    public Flight(String flightNumber, String origin, String destination, double price, int totalSeats) {
+        if (totalSeats < 0) {
+            throw new IllegalArgumentException("Total seats cannot be negative");
+        }
+        if (price < 0) {
+            throw new IllegalArgumentException("Price cannot be negative");
         }
         this.flightNumber = flightNumber;
         this.origin = origin;
         this.destination = destination;
         this.price = price;
-        this.availableSeats = availableSeats;
+        this.totalSeats = totalSeats;
+        this.availableSeats = totalSeats;
     }
 
-    //getters
+    // Getters
     public String getFlightNumber() {
         return flightNumber;
     }
+
     public String getOrigin() {
         return origin;
     }
+
     public String getDestination() {
         return destination;
     }
+
     public double getPrice() {
         return price;
     }
+
+    public int getTotalSeats() {
+        return totalSeats;
+    }
+
     public int getAvailableSeats() {
         return availableSeats;
     }
 
-    // methodes
-
-    // savoir sil possede des places disponibles
-     public boolean hasAvailableSeats() {
+    // Vérifier si des places sont disponibles
+    public boolean hasAvailableSeats() {
         return availableSeats > 0;
-     }
+    }
 
-    // reserver une place
+    // Réserver une place
     public boolean reserveSeat() {
         if (hasAvailableSeats()) {
             availableSeats--;
@@ -51,7 +65,16 @@ public class Flight {
         return false;
     }
 
-     // affichage
+    // Libérer une place
+    public boolean releaseSeat() {
+        if (availableSeats < totalSeats) {
+            availableSeats++;
+            return true;
+        }
+        return false;
+    }
+
+    // Affichage du vol
     @Override
     public String toString() {
         return "Flight{" +
@@ -59,9 +82,8 @@ public class Flight {
                 ", origin='" + origin + '\'' +
                 ", destination='" + destination + '\'' +
                 ", price=" + price +
+                ", totalSeats=" + totalSeats +
                 ", availableSeats=" + availableSeats +
                 '}';
     }
 }
-
-

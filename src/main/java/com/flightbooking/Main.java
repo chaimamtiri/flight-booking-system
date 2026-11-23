@@ -1,6 +1,7 @@
 package com.flightbooking;
 
 public class Main {
+
     public static void main(String[] args) {
 
         Flight flight = new Flight(
@@ -9,22 +10,20 @@ public class Main {
 
         System.out.println(flight);
 
-        System.out.println(
-                "Seats available? " + flight.hasAvailableSeats()
-        );
+        // Réserver 3 fois
+        System.out.println(flight.reserveSeat());
+        System.out.println(flight.reserveSeat());
+        System.out.println(flight.reserveSeat());
 
-        System.out.println(
-                "First reservation: " + flight.reserveSeat()
-        );
+        System.out.println("Available seats: "
+                + flight.getAvailableSeats());
 
-        System.out.println(
-                "Second reservation: " + flight.reserveSeat()
-        );
+        // Libérer 3 fois
+        System.out.println(flight.releaseSeat());
+        System.out.println(flight.releaseSeat());
+        System.out.println(flight.releaseSeat());
 
-        System.out.println(
-                "Third reservation: " + flight.reserveSeat()
-        );
-
-        System.out.println(flight);
+        System.out.println("Available seats: "
+                + flight.getAvailableSeats());
     }
 }
