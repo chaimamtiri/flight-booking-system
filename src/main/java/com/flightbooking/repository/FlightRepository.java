@@ -1,5 +1,6 @@
 package com.flightbooking.repository;
 
+import org.springframework.stereotype.Repository;
 import com.flightbooking.Flight;
 import com.flightbooking.database.DatabaseConnection;
 
@@ -10,6 +11,7 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 
+@Repository
 public class FlightRepository {
 
     public List<Flight> findAll() throws SQLException {
