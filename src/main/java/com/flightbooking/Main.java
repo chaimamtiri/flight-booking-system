@@ -1,31 +1,43 @@
 package com.flightbooking;
 
 public class Main {
+
     public static void main(String[] args) {
 
-        Flight flight = new Flight(
-                "BJ101", "Nice", "Tunis", 120.0, 2
+        BookingSystem system = new BookingSystem();
+
+        Flight flight1 = new Flight(
+                "BJ101", "Nice", "Tunis", 120.0, 180
         );
 
-        Passenger passenger = new Passenger(
-                "P001", "Sarah", "Martin", "sarah@example.com"
+        Flight flight2 = new Flight(
+                "AF202", "Paris", "Nice", 90.0, 150
         );
 
-        // Réserver une place avant de créer Booking
-        flight.reserveSeat();
+        Flight flight3 = new Flight(
+                "BJ303", "Nice", "Tunis", 150.0, 100
+        );
 
-        Booking booking = new Booking("B001", passenger, flight);
+        // Ajouter les vols
+        system.addFlight(flight1);
+        system.addFlight(flight2);
+        system.addFlight(flight3);
 
-        System.out.println("Before cancellation: "
-                + flight.getAvailableSeats());
+        // Afficher tous les vols
+        System.out.println("All flights:");
+        for (Flight flight : system.getFlights()) {
+            System.out.println(flight);
+        }
 
-        System.out.println("First cancellation: "
-                + booking.cancel());
+        // Rechercher Nice → Tunis
+        System.out.println("\nFlights from Nice to Tunis:");
 
-        System.out.println("After cancellation: "
-                + flight.getAvailableSeats());
+        for (Flight flight : system.searchFlights("Nice", "Tunis")) {
+            System.out.println(flight);
+        }
 
-        System.out.println("Second cancellation: "
-                + booking.cancel());
+        // Rechercher un vol par numéro
+        System.out.println("\nSearch flight BJ101:");
+        System.out.println(system.findFlightByNumber("BJ101"));
     }
 }
