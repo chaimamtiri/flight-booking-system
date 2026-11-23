@@ -26,6 +26,14 @@ public class Flight {
         this.availableSeats = totalSeats;
     }
 
+    public Flight(String flightNumber, String origin, String destination, double price, int totalSeats, int availableSeats) {
+        this(flightNumber, origin, destination, price, totalSeats);
+        if (availableSeats < 0 || availableSeats > totalSeats) {
+            throw new IllegalArgumentException("Invalid number of available seats");
+        }
+        this.availableSeats = availableSeats;
+    }
+
     // Getters
     public String getFlightNumber() {
         return flightNumber;
