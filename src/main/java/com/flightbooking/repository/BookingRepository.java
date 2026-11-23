@@ -89,4 +89,59 @@ public class BookingRepository {
             }
         }
     }
+
+    public boolean cancelBooking(String bookingId) throws SQLException {
+        if (bookingId == null || bookingId.isBlank()) {
+            throw new IllegalArgumentException("Booking ID cannot be empty");
+        }
+        String cancelSql = """
+            UPDATE bookings
+            SET status = 'CANCELLED'
+            WHERE booking_id = ?
+              AND status = 'CONFIRMED'
+            RETURNING flight_number
+            """;
+        String releaseSql = """
+            UPDATE flights
+            SET available_seats = available_seats + 1
+            WHERE flight_number = ?
+              AND available_seats < total_seats
+            """;
+        try (Connection connection = DatabaseConnection.getConnection()) {
+            connection.setAutoCommit(false);
+            try {
+                String flightNumber;
+                // 1. Annuler la réservation
+                try (PreparedStatement statement = connection.prepareStatement(cancelSql)) {
+                    statement.setString(1, bookingId);
+                    try (ResultSet result = statement.executeQuery()) {
+                        if (!result.next()) {
+                            connection.rollback();
+                            return false;
+                        }
+                        flightNumber = result.getString("flight_number");
+                    }
+                }
+                // 2. Libérer une place
+                try (PreparedStatement statement = connection.prepareStatement(releaseSql)) {
+                    statement.setString(1, flightNumber);
+                    int updatedRows = statement.executeUpdate();
+                    if (updatedRows != 1) {
+                        throw new IllegalStateException("Unable to release seat");
+                    }
+                }
+                // 3. Valider les deux modifications
+                connection.commit();
+                return true;
+            } catch (SQLException | RuntimeException e) {
+                try {
+                    connection.rollback();
+                } catch (SQLException rollbackError) {
+                    e.addSuppressed(rollbackError);
+                }
+                throw e;
+            }
+        }
+    }
+
 }
