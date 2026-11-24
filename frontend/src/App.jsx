@@ -1,21 +1,35 @@
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import './App.css'
+
+const passengers = [
+  { id: 'P001', name: 'Sarah Martin' },
+  { id: 'P002', name: 'Adam Ali' },
+  { id: 'P003', name: 'Lina Ben Ali' }
+]
 
 function App() {
   const [flights, setFlights] = useState([])
+  const [bookings, setBookings] = useState([])
+
   const [origin, setOrigin] = useState('')
   const [destination, setDestination] = useState('')
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
+  const [passengerId, setPassengerId] = useState('P003')
 
   const [selectedFlight, setSelectedFlight] = useState(null)
-  const [passengerId, setPassengerId] = useState('P003')
-  const [bookingLoading, setBookingLoading] = useState(false)
-  const [bookingError, setBookingError] = useState('')
   const [confirmation, setConfirmation] = useState(null)
 
-  async function loadFlights() {
+  const [loading, setLoading] = useState(true)
+  const [bookingsLoading, setBookingsLoading] = useState(true)
+  const [bookingLoading, setBookingLoading] = useState(false)
+  const [cancellingId, setCancellingId] = useState(null)
+
+  const [error, setError] = useState('')
+  const [bookingsError, setBookingsError] = useState('')
+  const [bookingError, setBookingError] = useState('')
+  const [notice, setNotice] = useState('')
+
+  const loadFlights = useCallback(async () => {
     try {
       const response = await fetch('/api/flights')
 
@@ -23,19 +37,44 @@ function App() {
         throw new Error('Unable to load flights')
       }
 
-      const data = await response.json()
-      setFlights(data)
+      setFlights(await response.json())
       setError('')
     } catch (err) {
       setError(err.message)
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
+
+  const loadBookings = useCallback(async (id) => {
+    setBookingsLoading(true)
+
+    try {
+      const response = await fetch(
+        `/api/bookings?passengerId=${encodeURIComponent(id)}`
+      )
+
+      if (!response.ok) {
+        throw new Error('Unable to load bookings')
+      }
+
+      setBookings(await response.json())
+      setBookingsError('')
+    } catch (err) {
+      setBookings([])
+      setBookingsError(err.message)
+    } finally {
+      setBookingsLoading(false)
+    }
+  }, [])
 
   useEffect(() => {
     loadFlights()
-  }, [])
+  }, [loadFlights])
+
+  useEffect(() => {
+    loadBookings(passengerId)
+  }, [passengerId, loadBookings])
 
   const filteredFlights = flights.filter(flight =>
     flight.origin.toLowerCase()
@@ -46,16 +85,9 @@ function App() {
 
   function openBooking(flight) {
     setSelectedFlight(flight)
-    setPassengerId('P003')
     setBookingError('')
     setConfirmation(null)
-  }
-
-  function closeBooking() {
-    if (bookingLoading) return
-
-    setSelectedFlight(null)
-    setBookingError('')
+    setNotice('')
   }
 
   async function handleBooking(event) {
@@ -66,18 +98,11 @@ function App() {
     setBookingLoading(true)
     setBookingError('')
 
-    // PostgreSQL booking_id is limited to 20 characters
-    const bookingId =
-      'B' + crypto.randomUUID()
+    const bookingId = 'B' +
+      crypto.randomUUID()
         .replaceAll('-', '')
         .slice(0, 16)
         .toUpperCase()
-
-    const requestBody = {
-      bookingId,
-      passengerId,
-      flightNumber: selectedFlight.flightNumber
-    }
 
     try {
       const response = await fetch('/api/bookings', {
@@ -85,10 +110,14 @@ function App() {
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify(requestBody)
+        body: JSON.stringify({
+          bookingId,
+          passengerId,
+          flightNumber: selectedFlight.flightNumber
+        })
       })
 
-      const data = await response.json()
+      const data = await response.json().catch(() => ({}))
 
       if (!response.ok) {
         throw new Error(
@@ -96,11 +125,14 @@ function App() {
         )
       }
 
-      setConfirmation(data)
       setSelectedFlight(null)
+      setConfirmation(data)
+      setNotice('')
 
-      // Refresh available seats after a successful booking
-      await loadFlights()
+      await Promise.all([
+        loadFlights(),
+        loadBookings(passengerId)
+      ])
 
     } catch (err) {
       setBookingError(err.message)
@@ -109,9 +141,49 @@ function App() {
     }
   }
 
+  async function handleCancel(bookingId) {
+    const confirmed = window.confirm(
+      `Cancel booking ${bookingId}?`
+    )
+
+    if (!confirmed || cancellingId !== null) return
+
+    setCancellingId(bookingId)
+    setBookingsError('')
+    setNotice('')
+
+    try {
+      const response = await fetch(
+        `/api/bookings/${encodeURIComponent(bookingId)}/cancel`,
+        { method: 'PATCH' }
+      )
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}))
+
+        throw new Error(
+          data.message || 'Unable to cancel booking'
+        )
+      }
+
+      // HTTP 204 returns no response body
+      setNotice(`Booking ${bookingId} cancelled successfully`)
+      setConfirmation(null)
+
+      await Promise.all([
+        loadFlights(),
+        loadBookings(passengerId)
+      ])
+
+    } catch (err) {
+      setBookingsError(err.message)
+    } finally {
+      setCancellingId(null)
+    }
+  }
+
   return (
     <div className="app">
-
       <header>
         <h2>✈ Flight Booking System</h2>
         <span>Explore your next destination</span>
@@ -154,24 +226,42 @@ function App() {
           </button>
         </section>
 
+        <section className="passenger-selector">
+          <label htmlFor="passenger">
+            Demo passenger
+          </label>
+
+          <select
+            id="passenger"
+            value={passengerId}
+            disabled={bookingLoading || cancellingId !== null}
+            onChange={e => {
+              setPassengerId(e.target.value)
+              setSelectedFlight(null)
+              setConfirmation(null)
+              setNotice('')
+            }}
+          >
+            {passengers.map(passenger => (
+              <option key={passenger.id} value={passenger.id}>
+                {passenger.id} — {passenger.name}
+              </option>
+            ))}
+          </select>
+        </section>
+
         {confirmation && (
-          <div className="confirmation">
+          <div className="confirmation" role="status">
             <h3>✓ Booking confirmed!</h3>
-            <p>
-              Booking ID: <strong>{confirmation.bookingId}</strong>
-            </p>
-            <p>
-              Passenger: {confirmation.passengerId}
-            </p>
-            <p>
-              Flight: {confirmation.flightNumber}
-            </p>
-            <p>
-              Status: <strong>{confirmation.status}</strong>
-            </p>
-            <button onClick={() => setConfirmation(null)}>
-              Close confirmation
-            </button>
+            <p>Booking ID: {confirmation.bookingId}</p>
+            <p>Flight: {confirmation.flightNumber}</p>
+            <p>Status: {confirmation.status}</p>
+          </div>
+        )}
+
+        {notice && (
+          <div className="confirmation" role="status">
+            {notice}
           </div>
         )}
 
@@ -185,9 +275,7 @@ function App() {
         {loading && <p>Loading flights...</p>}
 
         {error && (
-          <p className="error">
-            {error}. Check that Spring Boot is running.
-          </p>
+          <p className="error">{error}</p>
         )}
 
         {!loading && !error &&
@@ -238,6 +326,70 @@ function App() {
           }
         </section>
 
+        <section className="bookings-section">
+          <div className="results-header">
+            <h2>My Bookings (Demo)</h2>
+            <span>{passengerId}</span>
+          </div>
+
+          {bookingsLoading && (
+            <p>Loading bookings...</p>
+          )}
+
+          {bookingsError && (
+            <p className="error" role="alert">
+              {bookingsError}
+            </p>
+          )}
+
+          {!bookingsLoading &&
+            !bookingsError &&
+            bookings.length === 0 && (
+              <p>No bookings for this passenger.</p>
+            )}
+
+          <div className="bookings-list">
+            {!bookingsLoading &&
+              bookings.map(booking => (
+                <article
+                  className="booking-card"
+                  key={booking.bookingId}
+                >
+                  <div className="booking-details">
+                    <strong>{booking.bookingId}</strong>
+                    <p>Passenger: {booking.passengerId}</p>
+                    <p>Flight: {booking.flightNumber}</p>
+                  </div>
+
+                  <div className="booking-actions">
+                    <span className={
+                      booking.status === 'CONFIRMED'
+                        ? 'status-confirmed'
+                        : 'status-cancelled'
+                    }>
+                      {booking.status}
+                    </span>
+
+                    {booking.status === 'CONFIRMED' && (
+                      <button
+                        className="cancel-booking-button"
+                        disabled={cancellingId !== null}
+                        onClick={() =>
+                          handleCancel(booking.bookingId)
+                        }
+                      >
+                        {cancellingId === booking.bookingId
+                          ? 'Cancelling...'
+                          : 'Cancel booking'}
+                      </button>
+                    )}
+                  </div>
+                </article>
+              ))
+            }
+          </div>
+        </section>
+
         {selectedFlight && (
           <div className="modal-overlay">
             <div
@@ -246,12 +398,12 @@ function App() {
               aria-modal="true"
               aria-labelledby="booking-title"
             >
-              <h2 id="booking-title">Book your flight</h2>
+              <h2 id="booking-title">
+                Book your flight
+              </h2>
 
               <p>
-                Flight: <strong>
-                  {selectedFlight.flightNumber}
-                </strong>
+                Flight: {selectedFlight.flightNumber}
               </p>
 
               <p>
@@ -261,35 +413,12 @@ function App() {
               </p>
 
               <p>
-                Price: <strong>
-                  {Number(selectedFlight.price).toFixed(2)} €
-                </strong>
+                Price: {Number(selectedFlight.price).toFixed(2)} €
               </p>
 
+              <p>Passenger: {passengerId}</p>
+
               <form onSubmit={handleBooking}>
-                <label htmlFor="passengerId">
-                  Select passenger
-                </label>
-
-                <select
-                  id="passengerId"
-                  value={passengerId}
-                  onChange={e =>
-                    setPassengerId(e.target.value)
-                  }
-                  disabled={bookingLoading}
-                >
-                  <option value="P001">
-                    P001 — Sarah Martin
-                  </option>
-                  <option value="P002">
-                    P002 — Adam Ali
-                  </option>
-                  <option value="P003">
-                    P003 — Lina Ben Ali
-                  </option>
-                </select>
-
                 {bookingError && (
                   <p className="booking-error" role="alert">
                     {bookingError}
@@ -300,10 +429,10 @@ function App() {
                   <button
                     type="button"
                     className="cancel-button"
-                    onClick={closeBooking}
                     disabled={bookingLoading}
+                    onClick={() => setSelectedFlight(null)}
                   >
-                    Cancel
+                    Close
                   </button>
 
                   <button
@@ -319,7 +448,6 @@ function App() {
             </div>
           </div>
         )}
-
       </main>
     </div>
   )

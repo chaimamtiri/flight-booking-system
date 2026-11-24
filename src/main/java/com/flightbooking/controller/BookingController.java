@@ -19,6 +19,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
+import com.flightbooking.dto.BookingSummary;
+import java.util.List;
+
 import java.sql.SQLException;
 
 @RestController
@@ -35,6 +38,46 @@ public class BookingController {
 
     public record BookingResponse(String bookingId, String passengerId, String flightNumber, String status
     ) {}
+
+
+    @Operation(
+            summary = "Retrieve bookings for a passenger",
+            description = "Returns bookings associated with a passenger ID"
+    )
+    @ApiResponse(
+            responseCode = "200",
+            description = "Bookings retrieved successfully"
+    )
+    @ApiResponse(
+            responseCode = "400",
+            description = "Passenger ID is required",
+            content = @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ApiError.class)
+            )
+    )
+    @GetMapping
+    public List<BookingSummary> getBookings(
+            @RequestParam String passengerId) {
+
+        if (passengerId.isBlank()) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Passenger ID is required"
+            );
+        }
+
+        try {
+            return bookingRepository.findByPassengerId(passengerId);
+
+        } catch (SQLException e) {
+            throw new ResponseStatusException(
+                    HttpStatus.INTERNAL_SERVER_ERROR,
+                    "Database operation failed"
+            );
+        }
+    }
+
 
     // POST /api/bookings
     @Operation(

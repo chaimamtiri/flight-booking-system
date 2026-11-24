@@ -5,6 +5,10 @@ import com.flightbooking.Flight;
 import com.flightbooking.Passenger;
 import com.flightbooking.database.DatabaseConnection;
 
+import com.flightbooking.dto.BookingSummary;
+import java.util.ArrayList;
+import java.util.List;
+
 import org.springframework.stereotype.Repository;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -145,5 +149,40 @@ public class BookingRepository {
             }
         }
     }
+
+
+    public List<BookingSummary> findByPassengerId(
+            String passengerId) throws SQLException {
+
+        String sql = """
+            SELECT booking_id, passenger_id,
+                   flight_number, status
+            FROM bookings
+            WHERE passenger_id = ?
+            ORDER BY booking_id
+            """;
+
+        List<BookingSummary> bookings = new ArrayList<>();
+
+        try (Connection connection = DatabaseConnection.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+
+            statement.setString(1, passengerId);
+
+            try (ResultSet result = statement.executeQuery()) {
+                while (result.next()) {
+                    bookings.add(new BookingSummary(
+                            result.getString("booking_id"),
+                            result.getString("passenger_id"),
+                            result.getString("flight_number"),
+                            result.getString("status")
+                    ));
+                }
+            }
+        }
+
+        return bookings;
+    }
+
 
 }
