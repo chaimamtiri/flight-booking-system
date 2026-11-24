@@ -2,11 +2,18 @@ package com.flightbooking.controller;
 
 import com.flightbooking.Booking;
 import com.flightbooking.Passenger;
+import com.flightbooking.dto.ApiError;
 import com.flightbooking.dto.BookingRequest;
 import com.flightbooking.repository.BookingRepository;
 import com.flightbooking.repository.PassengerRepository;
 
 import jakarta.validation.Valid;
+
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
@@ -26,11 +33,57 @@ public class BookingController {
         this.passengerRepository = passengerRepository;
     }
 
-    // Response returned to the client
     public record BookingResponse(String bookingId, String passengerId, String flightNumber, String status
     ) {}
 
     // POST /api/bookings
+    @Operation(
+            summary = "Create a flight booking",
+            description = "Creates a confirmed booking for an existing " +
+                    "passenger and decreases available seats by one"
+    )
+    @ApiResponse(
+            responseCode = "201",
+            description = "Booking created successfully",
+            content = @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(
+                            implementation = BookingResponse.class
+                    )
+            )
+    )
+    @ApiResponse(
+            responseCode = "400",
+            description = "Invalid booking request",
+            content = @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ApiError.class)
+            )
+    )
+    @ApiResponse(
+            responseCode = "404",
+            description = "Passenger not found",
+            content = @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ApiError.class)
+            )
+    )
+    @ApiResponse(
+            responseCode = "409",
+            description = "Duplicate booking, unavailable flight or no seats",
+            content = @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ApiError.class)
+            )
+    )
+    @ApiResponse(
+            responseCode = "500",
+            description = "Database operation failed",
+            content = @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ApiError.class)
+            )
+    )
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public BookingResponse createBooking(@Valid @RequestBody BookingRequest request) {
@@ -39,9 +92,17 @@ public class BookingController {
             if (passenger == null) {
                 throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Passenger not found");
             }
+
             Booking booking = bookingRepository.bookFlight(request.bookingId(), passenger, request.flightNumber());
-            return new BookingResponse(booking.getBookingId(), booking.getPassenger().getPassengerId(), booking.getFlight().getFlightNumber(), booking.getStatus().name());
+            return new BookingResponse(
+                    booking.getBookingId(),
+                    booking.getPassenger().getPassengerId(),
+                    booking.getFlight().getFlightNumber(),
+                    booking.getStatus().name()
+            );
+
         } catch (SQLException e) {
+
             if ("23505".equals(e.getSQLState())) {
                 throw new ResponseStatusException(HttpStatus.CONFLICT, "Booking ID already exists");
             }
@@ -58,10 +119,31 @@ public class BookingController {
     }
 
     // PATCH /api/bookings/{bookingId}/cancel
+    @Operation(
+            summary = "Cancel an existing booking",
+            description = "Cancels a confirmed booking and releases one seat. " + "A booking cannot be cancelled twice."
+    )
+    @ApiResponse(
+            responseCode = "204",
+            description = "Booking cancelled successfully",
+            content = @Content
+    )
+    @ApiResponse(
+            responseCode = "409",
+            description = "Booking not found or already cancelled",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ApiError.class))
+    )
+    @ApiResponse(
+            responseCode = "500",
+            description = "Database operation failed",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ApiError.class))
+    )
     @PatchMapping("/{bookingId}/cancel")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void cancelBooking(
+            @Parameter(description = "Unique booking identifier", example = "B003")
             @PathVariable String bookingId) {
+
         try {
             boolean cancelled = bookingRepository.cancelBooking(bookingId);
             if (!cancelled) {
