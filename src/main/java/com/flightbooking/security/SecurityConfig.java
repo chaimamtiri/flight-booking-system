@@ -30,7 +30,10 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http, DaoAuthenticationProvider authenticationProvider) throws Exception {
-        http.authenticationProvider(authenticationProvider).authorizeHttpRequests(auth -> auth
+        http.authenticationProvider(authenticationProvider)
+
+                .authorizeHttpRequests(auth -> auth
+
                         // Public flight search
                         .requestMatchers(
                                 HttpMethod.GET,
@@ -38,7 +41,7 @@ public class SecurityConfig {
                                 "/api/flights/**"
                         ).permitAll()
 
-                        // Swagger documentation (development only)
+                        // Swagger - development environment
                         .requestMatchers(
                                 "/swagger-ui.html",
                                 "/swagger-ui/**",
@@ -46,8 +49,13 @@ public class SecurityConfig {
                                 "/v3/api-docs/**"
                         ).permitAll()
 
-                        // Block these endpoints until ownership
-                        // checks are implemented
+                        // Only an authenticated user can reach this endpoint
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                "/api/bookings/me"
+                        ).authenticated()
+
+                        // Other booking operations remain blocked
                         .requestMatchers(
                                 "/api/bookings",
                                 "/api/bookings/**",
@@ -55,7 +63,6 @@ public class SecurityConfig {
                                 "/api/passengers/**"
                         ).denyAll()
 
-                        // Deny any unlisted request
                         .anyRequest().denyAll()
                 )
                 .httpBasic(Customizer.withDefaults())

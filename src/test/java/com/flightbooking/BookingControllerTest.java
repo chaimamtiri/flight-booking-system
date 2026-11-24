@@ -11,6 +11,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
+
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -18,6 +19,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 
+import com.flightbooking.service.UserService;
 import com.flightbooking.dto.BookingSummary;
 import java.util.List;
 
@@ -34,6 +36,9 @@ class BookingControllerTest {
 
     @MockitoBean
     private PassengerRepository passengerRepository;
+
+    @MockitoBean
+    private UserService userService;
 
     @Test
     void shouldCreateBooking() throws Exception {

@@ -6,7 +6,7 @@ import com.flightbooking.dto.ApiError;
 import com.flightbooking.dto.BookingRequest;
 import com.flightbooking.repository.BookingRepository;
 import com.flightbooking.repository.PassengerRepository;
-
+import com.flightbooking.dto.BookingSummary;
 import jakarta.validation.Valid;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -19,6 +19,12 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
+import com.flightbooking.model.AppUser;
+import com.flightbooking.service.UserService;
+import org.springframework.security.core.Authentication;
+import java.util.List;
+
+
 import com.flightbooking.dto.BookingSummary;
 import java.util.List;
 
@@ -30,10 +36,16 @@ public class BookingController {
 
     private final BookingRepository bookingRepository;
     private final PassengerRepository passengerRepository;
+    private final UserService userService;
 
-    public BookingController(BookingRepository bookingRepository, PassengerRepository passengerRepository) {
+    public BookingController(
+            BookingRepository bookingRepository,
+            PassengerRepository passengerRepository,
+            UserService userService) {
+
         this.bookingRepository = bookingRepository;
         this.passengerRepository = passengerRepository;
+        this.userService = userService;
     }
 
     public record BookingResponse(String bookingId, String passengerId, String flightNumber, String status
@@ -197,4 +209,51 @@ public class BookingController {
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Database operation failed");
         }
     }
+
+
+    @Operation(
+            summary = "Get my bookings",
+            description = "Returns bookings belonging to the authenticated passenger"
+    )
+    @GetMapping("/me")
+    public List<BookingSummary> getMyBookings(
+            Authentication authentication) {
+
+        if (authentication == null ||
+                !authentication.isAuthenticated()) {
+            throw new ResponseStatusException(
+                    HttpStatus.UNAUTHORIZED,
+                    "Authentication required"
+            );
+        }
+
+        try {
+            AppUser user = userService
+                    .findByEmail(authentication.getName())
+                    .orElseThrow(() ->
+                            new ResponseStatusException(
+                                    HttpStatus.FORBIDDEN,
+                                    "Account not found"
+                            )
+                    );
+
+            if (!user.enabled()) {
+                throw new ResponseStatusException(
+                        HttpStatus.FORBIDDEN,
+                        "Account disabled"
+                );
+            }
+
+            return bookingRepository.findByPassengerId(
+                    user.passengerId()
+            );
+
+        } catch (SQLException e) {
+            throw new ResponseStatusException(
+                    HttpStatus.INTERNAL_SERVER_ERROR,
+                    "Database operation failed"
+            );
+        }
+    }
+
 }
