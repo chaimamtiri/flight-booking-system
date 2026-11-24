@@ -5,11 +5,13 @@ import com.flightbooking.Flight;
 import com.flightbooking.Passenger;
 import com.flightbooking.database.DatabaseConnection;
 
+import org.springframework.stereotype.Repository;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 
+@Repository
 public class BookingRepository {
 
     public Booking bookFlight(String bookingId, Passenger passenger, String flightNumber) throws SQLException {
