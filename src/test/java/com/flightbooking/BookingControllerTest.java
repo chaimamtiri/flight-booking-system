@@ -16,10 +16,14 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+
 import com.flightbooking.dto.BookingSummary;
 import java.util.List;
 
+
 @WebMvcTest(BookingController.class)
+@AutoConfigureMockMvc(addFilters = false)
 class BookingControllerTest {
 
     @Autowired
