@@ -1,0 +1,159 @@
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background: #f4f7fb;
+  color: #172b4d;
+}
+
+header {
+  background: white;
+  padding: 18px 7%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+header h2 {
+  color: #1463b8;
+}
+
+.hero {
+  background: linear-gradient(120deg, #102f60, #187bd1);
+  color: white;
+  padding: 70px 8% 110px;
+}
+
+.hero h1 {
+  font-size: 42px;
+  margin-bottom: 12px;
+}
+
+main {
+  max-width: 1050px;
+  margin: -45px auto 60px;
+  padding: 0 16px;
+}
+
+.search {
+  display: flex;
+  gap: 16px;
+  align-items: end;
+  background: white;
+  padding: 25px;
+  border-radius: 14px;
+  box-shadow: 0 8px 25px #00000012;
+}
+
+.search div {
+  flex: 1;
+}
+
+label {
+  display: block;
+  font-weight: bold;
+  margin-bottom: 8px;
+}
+
+input {
+  width: 100%;
+  padding: 13px;
+  border: 1px solid #d6e0ed;
+  border-radius: 8px;
+}
+
+button {
+  padding: 13px 16px;
+  border: none;
+  border-radius: 8px;
+  background: #1478dc;
+  color: white;
+  cursor: pointer;
+}
+
+.results-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 55px 0 25px;
+}
+
+.flight-list {
+  display: grid;
+  gap: 18px;
+}
+
+.flight-card {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 26px;
+  background: white;
+  border-radius: 14px;
+  box-shadow: 0 4px 18px #0000000a;
+}
+
+.flight-number {
+  color: #1463b8;
+  font-weight: bold;
+}
+
+.route {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  margin-top: 20px;
+  font-size: 23px;
+}
+
+.flight-info p {
+  color: #17815b;
+}
+
+.price {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  border-left: 1px solid #edf0f4;
+  padding-left: 25px;
+}
+
+.price strong {
+  font-size: 26px;
+}
+
+.price button {
+  background: #dce5f0;
+  color: #64748b;
+  cursor: not-allowed;
+}
+
+.error {
+  color: #b91c1c;
+}
+
+@media (max-width: 700px) {
+  header, .search, .flight-card {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .hero h1 {
+    font-size: 32px;
+  }
+
+  .route {
+    gap: 12px;
+    font-size: 19px;
+  }
+
+  .price {
+    border-left: none;
+    border-top: 1px solid #edf0f4;
+    padding: 20px 0 0;
+  }
+}
