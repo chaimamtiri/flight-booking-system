@@ -31,7 +31,6 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http, DaoAuthenticationProvider authenticationProvider) throws Exception {
         http.authenticationProvider(authenticationProvider)
-
                 .authorizeHttpRequests(auth -> auth
 
                         // Public flight search
@@ -41,7 +40,7 @@ public class SecurityConfig {
                                 "/api/flights/**"
                         ).permitAll()
 
-                        // Swagger - development environment
+                        // Swagger - local development only
                         .requestMatchers(
                                 "/swagger-ui.html",
                                 "/swagger-ui/**",
@@ -49,13 +48,23 @@ public class SecurityConfig {
                                 "/v3/api-docs/**"
                         ).permitAll()
 
-                        // Only an authenticated user can reach this endpoint
+                        // Authenticated passenger operations
                         .requestMatchers(
                                 HttpMethod.GET,
                                 "/api/bookings/me"
                         ).authenticated()
 
-                        // Other booking operations remain blocked
+                        .requestMatchers(
+                                HttpMethod.POST,
+                                "/api/bookings"
+                        ).authenticated()
+
+                        .requestMatchers(
+                                HttpMethod.PATCH,
+                                "/api/bookings/*/cancel"
+                        ).authenticated()
+
+                        // Legacy endpoints remain blocked
                         .requestMatchers(
                                 "/api/bookings",
                                 "/api/bookings/**",
@@ -65,6 +74,7 @@ public class SecurityConfig {
 
                         .anyRequest().denyAll()
                 )
+
                 .httpBasic(Customizer.withDefaults())
                 .formLogin(form -> form.disable());
 

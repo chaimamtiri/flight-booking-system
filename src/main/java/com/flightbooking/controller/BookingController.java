@@ -24,6 +24,9 @@ import com.flightbooking.service.UserService;
 import org.springframework.security.core.Authentication;
 import java.util.List;
 
+import com.flightbooking.model.AppUser;
+import org.springframework.security.core.Authentication;
+
 
 import com.flightbooking.dto.BookingSummary;
 import java.util.List;
@@ -139,16 +142,44 @@ public class BookingController {
                     schema = @Schema(implementation = ApiError.class)
             )
     )
+
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public BookingResponse createBooking(@Valid @RequestBody BookingRequest request) {
+    public BookingResponse createBooking(
+            @Valid @RequestBody BookingRequest request,
+            Authentication authentication) {
+
         try {
-            Passenger passenger = passengerRepository.findById(request.passengerId());
-            if (passenger == null) {
-                throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Passenger not found");
+            AppUser user = getAuthenticatedUser(authentication);
+
+            // Refuse booking for another passenger
+            if (!user.passengerId().equals(
+                    request.passengerId())) {
+
+                throw new ResponseStatusException(
+                        HttpStatus.FORBIDDEN,
+                        "Cannot book for another passenger"
+                );
             }
 
-            Booking booking = bookingRepository.bookFlight(request.bookingId(), passenger, request.flightNumber());
+            Passenger passenger =
+                    passengerRepository.findById(
+                            user.passengerId()
+                    );
+
+            if (passenger == null) {
+                throw new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Passenger not found"
+                );
+            }
+
+            Booking booking = bookingRepository.bookFlight(
+                    request.bookingId(),
+                    passenger,
+                    request.flightNumber()
+            );
+
             return new BookingResponse(
                     booking.getBookingId(),
                     booking.getPassenger().getPassengerId(),
@@ -159,19 +190,32 @@ public class BookingController {
         } catch (SQLException e) {
 
             if ("23505".equals(e.getSQLState())) {
-                throw new ResponseStatusException(HttpStatus.CONFLICT, "Booking ID already exists");
+                throw new ResponseStatusException(
+                        HttpStatus.CONFLICT,
+                        "Booking ID already exists"
+                );
             }
 
             if ("23503".equals(e.getSQLState())) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Referenced passenger or flight not found");
+                throw new ResponseStatusException(
+                        HttpStatus.BAD_REQUEST,
+                        "Referenced passenger or flight not found"
+                );
             }
 
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Database operation failed");
+            throw new ResponseStatusException(
+                    HttpStatus.INTERNAL_SERVER_ERROR,
+                    "Database operation failed"
+            );
 
         } catch (IllegalStateException e) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Flight not found or no available seats");
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "Flight not found or no available seats"
+            );
         }
     }
+
 
     // PATCH /api/bookings/{bookingId}/cancel
     @Operation(
@@ -193,22 +237,29 @@ public class BookingController {
             description = "Database operation failed",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = ApiError.class))
     )
+
     @PatchMapping("/{bookingId}/cancel")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void cancelBooking(
-            @Parameter(description = "Unique booking identifier", example = "B003")
-            @PathVariable String bookingId) {
-
+    public void cancelBooking(@PathVariable String bookingId, Authentication authentication) {
         try {
-            boolean cancelled = bookingRepository.cancelBooking(bookingId);
+            AppUser user = getAuthenticatedUser(authentication);
+            boolean cancelled = bookingRepository.cancelBookingForPassenger(bookingId, user.passengerId());
+
             if (!cancelled) {
-                throw new ResponseStatusException(HttpStatus.CONFLICT, "Booking not found or already cancelled");
+                throw new ResponseStatusException(
+                        HttpStatus.CONFLICT,
+                        "Booking unavailable or already cancelled"
+                );
             }
 
         } catch (SQLException e) {
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Database operation failed");
+            throw new ResponseStatusException(
+                    HttpStatus.INTERNAL_SERVER_ERROR,
+                    "Database operation failed"
+            );
         }
     }
+
 
 
     @Operation(
@@ -255,5 +306,23 @@ public class BookingController {
             );
         }
     }
+
+
+    private AppUser getAuthenticatedUser(Authentication authentication) throws SQLException {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Authentication required");
+        }
+
+        AppUser user = userService
+                .findByEmail(authentication.getName())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Account not found"));
+
+        if (!user.enabled()) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Account disabled");
+        }
+
+        return user;
+    }
+
 
 }

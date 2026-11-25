@@ -185,4 +185,55 @@ public class BookingRepository {
     }
 
 
+    public boolean cancelBookingForPassenger(String bookingId, String passengerId) throws SQLException {
+        String cancelSql = """
+            UPDATE bookings
+            SET status = 'CANCELLED'
+            WHERE booking_id = ?
+              AND passenger_id = ?
+              AND status = 'CONFIRMED'
+            RETURNING flight_number
+            """;
+
+        String releaseSeatSql = """
+            UPDATE flights
+            SET available_seats = available_seats + 1
+            WHERE flight_number = ?
+              AND available_seats < total_seats
+            """;
+
+        try (Connection connection = DatabaseConnection.getConnection()) {
+            connection.setAutoCommit(false);
+            try {
+                String flightNumber;
+                try (PreparedStatement statement = connection.prepareStatement(cancelSql)) {
+                    statement.setString(1, bookingId);
+                    statement.setString(2, passengerId);
+                    try (ResultSet result = statement.executeQuery()) {
+                        if (!result.next()) {connection.rollback();
+                            return false;
+                        }
+                        flightNumber = result.getString("flight_number");
+                    }
+                }
+                int updatedSeats;
+                try (PreparedStatement statement = connection.prepareStatement(releaseSeatSql)) {
+                    statement.setString(1, flightNumber);
+                    updatedSeats = statement.executeUpdate();
+                }
+
+                if (updatedSeats != 1) {
+                    throw new SQLException("Unable to release the reserved seat");
+                }
+                connection.commit();
+                return true;
+            } catch (SQLException | RuntimeException e) {
+                connection.rollback();
+                throw e;
+            }
+        }
+    }
+
+
+
 }

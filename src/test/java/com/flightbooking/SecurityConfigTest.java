@@ -30,6 +30,14 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import org.springframework.http.MediaType;
+
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+
 @SpringBootTest
 @AutoConfigureMockMvc
 class SecurityConfigTest {
@@ -45,6 +53,8 @@ class SecurityConfigTest {
 
     @MockitoBean
     private BookingRepository bookingRepository;
+
+
 
     @Test
     void shouldAllowPublicFlightSearch() throws Exception {
@@ -117,5 +127,50 @@ class SecurityConfigTest {
         verify(bookingRepository, never())
                 .findByPassengerId("P001");
     }
+
+
+    @Test
+    @WithMockUser(
+            username = "lina@example.com",
+            roles = "PASSENGER"
+    )
+    void shouldRejectBookingForAnotherPassenger()
+            throws Exception {
+
+        AppUser lina = new AppUser(
+                3L, "P003", "lina@example.com", "test-hash", true
+        );
+
+        when(userService.findByEmail("lina@example.com"))
+                .thenReturn(Optional.of(lina));
+
+        mockMvc.perform(post("/api/bookings")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                        {
+                          "bookingId": "B999",
+                          "passengerId": "P001",
+                          "flightNumber": "BJ101"
+                        }
+                        """))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.message")
+                        .value("Cannot book for another passenger"));
+
+        verify(bookingRepository, never())
+                .bookFlight(anyString(), any(), anyString());
+    }
+
+    @Test
+    @WithMockUser(username = "lina@example.com", roles = "PASSENGER")
+    void shouldNotCancelAnotherPassengerBooking() throws Exception {
+        AppUser lina = new AppUser(3L, "P003", "lina@example.com", "test-hash", true);
+        when(userService.findByEmail("lina@example.com")).thenReturn(Optional.of(lina));
+        when(bookingRepository.cancelBookingForPassenger("B001", "P003")).thenReturn(false);
+        mockMvc.perform(patch("/api/bookings/B001/cancel").with(csrf())).andExpect(status().isConflict());
+        verify(bookingRepository).cancelBookingForPassenger("B001", "P003");
+    }
+
 
 }
